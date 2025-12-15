@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcards - Learn Languages</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="#" class="logo" id="home-btn">
+                    <span class="logo-white">Flash</span><span class="logo-orange">cards</span>
+                </a>
+            </div>
+            <div class="nav-right">
+                <button class="nav-btn create-btn" id="create-language-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M12 4v16m8-8H4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    New Language
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <!-- Library View (Folders) -->
+        <section class="library-view" id="library-view">
+            <div class="library-header">
+                <div class="library-header-top">
+                    <h1>My Library</h1>
+                    <button class="settings-btn" id="library-settings-btn" title="Library Settings">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                        </svg>
+                    </button>
+                </div>
+                <p>Select a language folder to view your flashcard sets</p>
+            </div>
+
+            <div class="folders-grid">
+                <div class="folder-card" data-folder="german">
+                    <div class="folder-icon">🇩🇪</div>
+                    <div class="folder-info">
+                        <h3>German</h3>
+                        <p><span id="german-sets-count">0</span> sets · <span id="german-cards-count">0</span> cards</p>
+                    </div>
+                    <svg class="folder-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+
+                <div class="folder-card" data-folder="russian">
+                    <div class="folder-icon">🇷🇺</div>
+                    <div class="folder-info">
+                        <h3>Russian</h3>
+                        <p><span id="russian-sets-count">0</span> sets · <span id="russian-cards-count">0</span> cards</p>
+                    </div>
+                    <svg class="folder-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+
+                <div class="folder-card" data-folder="english">
+                    <div class="folder-icon">🇬🇧</div>
+                    <div class="folder-info">
+                        <h3>English</h3>
+                        <p><span id="english-sets-count">0</span> sets · <span id="english-cards-count">0</span> cards</p>
+                    </div>
+                    <svg class="folder-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- Folder View (Sets List) -->
+        <section class="folder-view hidden" id="folder-view">
+            <div class="breadcrumb">
+                <button class="breadcrumb-btn" id="back-to-library">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    Library
+                </button>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-current" id="folder-name">German</span>
+            </div>
+
+            <div class="folder-header">
+                <div class="folder-title">
+                    <span class="folder-title-icon" id="folder-title-icon">🇩🇪</span>
+                    <h1 id="folder-title-text">German</h1>
+                </div>
+                <button class="add-set-btn" id="add-set-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Set
+                </button>
+            </div>
+
+            <div class="sets-grid" id="sets-grid">
+                <!-- Sets will be rendered here -->
+            </div>
+
+            <div class="empty-folder hidden" id="empty-folder">
+                <div class="empty-icon">📁</div>
+                <h3>No flashcard sets yet</h3>
+                <p>Create your first set to start learning</p>
+                <button class="btn-primary" id="empty-add-set-btn">Create Set</button>
+            </div>
+        </section>
+
+        <!-- Set View (Flashcards) -->
+        <section class="set-view hidden" id="set-view">
+            <div class="breadcrumb">
+                <button class="breadcrumb-btn" id="back-to-folder">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    <span id="breadcrumb-folder-name">German</span>
+                </button>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-current" id="breadcrumb-set-name">Common Phrases</span>
+            </div>
+
+            <!-- Set Header -->
+            <div class="set-header">
+                <div class="set-info">
+                    <h1 class="set-title" id="set-title">Common Phrases</h1>
+                    <div class="set-meta">
+                        <span class="term-count" id="term-count">0 terms</span>
+                        <span class="separator">|</span>
+                        <span class="creator">Your flashcard set</span>
+                    </div>
+                </div>
+                <div class="set-actions">
+                    <button class="action-btn" id="edit-set-btn" title="Edit set">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn delete-set-btn" id="delete-set-btn" title="Delete set">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Tracking -->
+            <div class="progress-tracking" id="progress-tracking">
+                <div class="progress-stats">
+                    <div class="progress-stat">
+                        <div class="stat-circle mastered">
+                            <span class="stat-number" id="mastered-count">0</span>
+                        </div>
+                        <span class="stat-label">Mastered</span>
+                    </div>
+                    <div class="progress-stat">
+                        <div class="stat-circle learning">
+                            <span class="stat-number" id="learning-count">0</span>
+                        </div>
+                        <span class="stat-label">Learning</span>
+                    </div>
+                    <div class="progress-stat">
+                        <div class="stat-circle not-started">
+                            <span class="stat-number" id="not-started-count">0</span>
+                        </div>
+                        <span class="stat-label">Not Started</span>
+                    </div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-mastered" id="progress-bar-mastered"></div>
+                        <div class="progress-bar-learning" id="progress-bar-learning"></div>
+                    </div>
+                    <span class="progress-percentage" id="progress-percentage">0% complete</span>
+                </div>
+                <button class="reset-progress-btn" id="reset-progress-btn" title="Reset progress">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    Reset
+                </button>
+            </div>
+
+            <!-- Study Modes -->
+            <div class="study-modes">
+                <button class="mode-card active" data-mode="flashcards">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <rect x="2" y="4" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <line x1="6" y1="20" x2="18" y2="20" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span>Flashcards</span>
+                </button>
+                <button class="mode-card" data-mode="learn">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span>Learn</span>
+                </button>
+                <button class="mode-card" data-mode="test">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M9 11l3 3L22 4" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" fill="none" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span>Test</span>
+                </button>
+                <button class="mode-card" data-mode="match">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <rect x="3" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <rect x="14" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <rect x="14" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span>Match</span>
+                </button>
+            </div>
+
+            <!-- Flashcard Section -->
+            <div class="flashcard-section" id="flashcard-section">
+                <div class="flashcard-wrapper">
+                    <div class="flashcard-container">
+                        <div class="flashcard" id="flashcard">
+                            <div class="flashcard-inner">
+                                <div class="flashcard-front">
+                                    <div class="card-label">TERM</div>
+                                    <p class="card-content" id="front-content">Click to start</p>
+                                    <button class="tts-btn card-tts-btn" id="front-tts-btn" title="Listen to pronunciation">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                            <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                                            <path d="M19.07 4.93a10 10 0 010 14.14"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="flashcard-back">
+                                    <div class="card-label">DEFINITION</div>
+                                    <div class="card-image-container hidden" id="card-image-container">
+                                        <img id="card-image" src="" alt="Card image">
+                                    </div>
+                                    <p class="card-content" id="back-content">Add cards to begin studying</p>
+                                    <button class="tts-btn card-tts-btn" id="back-tts-btn" title="Listen to pronunciation">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                            <path d="M15.54 8.46a5 5 0 010 7.07"/>
+                                            <path d="M19.07 4.93a10 10 0 010 14.14"/>
+                                        </svg>
+                                    </button>
+                                    <p class="example-sentence" id="example-text"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flashcard-controls">
+                        <button class="control-btn" id="prev-btn" title="Previous (Left arrow)">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                        </button>
+
+                        <div class="card-progress">
+                            <span id="current-card">1</span> / <span id="total-cards">0</span>
+                        </div>
+
+                        <button class="control-btn" id="next-btn" title="Next (Right arrow)">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="mastery-buttons" id="mastery-buttons">
+                        <button class="mastery-btn still-learning" id="still-learning-btn" title="Still learning this card">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            Still Learning
+                        </button>
+                        <button class="mastery-btn got-it" id="got-it-btn" title="I know this card">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 6L9 17l-5-5"/>
+                            </svg>
+                            Got It
+                        </button>
+                    </div>
+
+                    <div class="flashcard-options">
+                        <button class="option-btn" id="shuffle-btn" title="Shuffle cards">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                                <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+                                <line x1="4" y1="4" x2="9" y2="9"/>
+                            </svg>
+                            Shuffle
+                        </button>
+                        <button class="option-btn" id="fullscreen-btn" title="Fullscreen">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                                <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                            </svg>
+                            Fullscreen
+                        </button>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learn Mode Section -->
+            <div class="learn-section hidden" id="learn-section">
+                <div class="learn-container">
+                    <div class="learn-progress">
+                        <div class="learn-progress-bar">
+                            <div class="learn-progress-fill" id="learn-progress-fill"></div>
+                        </div>
+                        <span class="learn-progress-text" id="learn-progress-text">0 / 0</span>
+                    </div>
+                    <div class="learn-card" id="learn-card">
+                        <p class="learn-question" id="learn-question">Loading...</p>
+                        <div class="learn-options" id="learn-options"></div>
+                    </div>
+                    <div class="learn-result hidden" id="learn-result">
+                        <div class="result-icon"></div>
+                        <p class="result-text"></p>
+                        <button class="continue-btn" id="continue-btn">Continue</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Mode Section -->
+            <div class="test-section hidden" id="test-section">
+                <div class="test-container">
+                    <div class="test-header">
+                        <h2>Test yourself</h2>
+                        <p>Answer all questions to see your score</p>
+                    </div>
+                    <div class="test-questions" id="test-questions"></div>
+                    <button class="submit-test-btn" id="submit-test-btn">Check Answers</button>
+                    <div class="test-results hidden" id="test-results">
+                        <div class="results-score">
+                            <span class="score-number" id="score-number">0</span>
+                            <span class="score-total">/ <span id="score-total">0</span></span>
+                        </div>
+                        <p class="results-text" id="results-text">Great job!</p>
+                        <button class="retake-btn" id="retake-btn">Retake Test</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Game Section -->
+            <div class="match-section hidden" id="match-section">
+                <div class="match-container">
+                    <div class="match-header">
+                        <div class="match-timer">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span id="match-time">0.0</span>s
+                        </div>
+                    </div>
+                    <div class="match-grid" id="match-grid"></div>
+                    <div class="match-complete hidden" id="match-complete">
+                        <h2>Great job!</h2>
+                        <p class="match-final-time">Your time: <span id="final-time">0.0</span>s</p>
+                        <button class="play-again-btn" id="play-again-btn">Play Again</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terms List -->
+            <div class="terms-section">
+                <div class="terms-header">
+                    <h2>Terms in this set (<span id="terms-count">0</span>)</h2>
+                    <div class="terms-actions">
+                        <button class="terms-btn" id="add-term-btn">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add term
+                        </button>
+                        <button class="terms-btn" id="import-btn">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Import
+                        </button>
+                    </div>
+                </div>
+                <div class="terms-list" id="terms-list"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create/Edit Set Modal -->
+    <div class="modal" id="set-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="set-modal-title">Create new set</h2>
+                <button class="modal-close" id="set-modal-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="set-language-select">LANGUAGE FOLDER</label>
+                    <select id="set-language-select" class="language-select">
+                        <option value="german">🇩🇪 German</option>
+                        <option value="russian">🇷🇺 Russian</option>
+                        <option value="english">🇬🇧 English</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="set-name-input">SET NAME</label>
+                    <input type="text" id="set-name-input" placeholder="e.g., Common Phrases, Numbers, Food & Drinks">
+                </div>
+                <div class="form-group">
+                    <label for="set-description-input">DESCRIPTION (optional)</label>
+                    <textarea id="set-description-input" placeholder="What will you learn in this set?"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="set-modal-cancel">Cancel</button>
+                <button class="btn-primary" id="set-modal-save">Create Set</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Card Modal -->
+    <div class="modal" id="card-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="card-modal-title">Add new term</h2>
+                <button class="modal-close" id="card-modal-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="term-input">TERM</label>
+                        <input type="text" id="term-input" placeholder="Enter term">
+                    </div>
+                    <div class="form-group">
+                        <label for="definition-input">DEFINITION</label>
+                        <textarea id="definition-input" placeholder="Enter definition"></textarea>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="example-input">EXAMPLE (optional)</label>
+                    <textarea id="example-input" placeholder="Enter an example sentence"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>IMAGE (optional)</label>
+                    <div class="image-upload-area" id="image-upload-area">
+                        <input type="file" id="image-input" accept="image/*" hidden>
+                        <div class="image-preview-container hidden" id="image-preview-container">
+                            <img id="image-preview" src="" alt="Preview">
+                            <button type="button" class="remove-image-btn" id="remove-image-btn" title="Remove image">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="image-upload-placeholder" id="image-upload-placeholder">
+                            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                            <span>Click or drag to upload an image</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="card-modal-cancel">Cancel</button>
+                <button class="btn-primary" id="card-modal-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal" id="import-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content import-modal-content">
+            <div class="modal-header">
+                <h2>Import terms</h2>
+                <button class="modal-close" id="import-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="import-instructions">Copy and paste your data here. Use tabs or commas to separate terms and definitions.</p>
+                <textarea id="import-data" placeholder="term1&#9;definition1&#10;term2&#9;definition2"></textarea>
+                <div class="import-options">
+                    <label>Between term and definition:</label>
+                    <select id="separator-select">
+                        <option value="tab">Tab</option>
+                        <option value="comma">Comma</option>
+                        <option value="semicolon">Semicolon</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="import-cancel">Cancel</button>
+                <button class="btn-primary" id="import-confirm">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Language Order Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content settings-modal-content">
+            <div class="modal-header">
+                <h2>Library Settings</h2>
+                <button class="modal-close" id="settings-modal-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>Language Folder Order</h3>
+                    <p class="settings-description">Drag and drop to reorder your language folders</p>
+                    <div class="language-order-list" id="language-order-list">
+                        <!-- Language items will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="settings-modal-cancel">Cancel</button>
+                <button class="btn-primary" id="settings-modal-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Language Modal -->
+    <div class="modal" id="language-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content language-modal-content">
+            <div class="modal-header">
+                <h2>Add new language</h2>
+                <button class="modal-close" id="language-modal-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>SELECT A LANGUAGE</label>
+                    <div class="language-grid" id="language-grid">
+                        <!-- Language options rendered by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="language-modal-cancel">Cancel</button>
+                <button class="btn-primary" id="language-modal-save">Add Language</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
