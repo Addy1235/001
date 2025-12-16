@@ -69,3 +69,7 @@ prompt.md
 
 # Gemini CLI settings (symlink to .claude/.mcp.json)
 .gemini/settings.json
+
+# Backend specific
+backend/node_modules/
+backend/.env

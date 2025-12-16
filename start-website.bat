@@ -1,0 +1,3 @@
+@echo off
+echo Opening Flashcard App in browser...
+start "" "d:\1.1_flashcard\index.html"

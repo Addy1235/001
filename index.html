@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#ffffff">
     <title>Flashcards - Learn Languages</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,16 +17,61 @@
         <div class="nav-container">
             <div class="nav-left">
                 <a href="#" class="logo" id="home-btn">
-                    <span class="logo-primary">FLASH</span><span class="logo-accent">CARDS</span>
+                    <svg class="logo-lock" viewBox="0 0 28 28" width="24" height="24">
+                        <!-- Outer dark ring (the O) -->
+                        <circle cx="14" cy="14" r="12" fill="none" stroke="#333" stroke-width="2"/>
+                        <!-- Lock body -->
+                        <rect x="9" y="12" width="10" height="8" rx="1" fill="#00AFF0"/>
+                        <!-- Lock shackle -->
+                        <path d="M11 12 L11 9 Q11 6 14 6 Q17 6 17 9 L17 12" fill="none" stroke="#00AFF0" stroke-width="2.5" stroke-linecap="round"/>
+                        <!-- Keyhole -->
+                        <circle cx="14" cy="15.5" r="1.5" fill="white"/>
+                        <rect x="13.25" y="15.5" width="1.5" height="3" fill="white"/>
+                    </svg>
+                    <span class="logo-text"><span class="logo-dark">nly</span><span class="logo-blue">Tuans</span></span>
                 </a>
             </div>
+            <div class="nav-center">
+                <div class="nav-datetime" id="nav-datetime">
+                    <span class="datetime-time" id="datetime-time">00:00</span>
+                    <span class="datetime-separator">|</span>
+                    <span class="datetime-date" id="datetime-date">Mon, Jan 1</span>
+                </div>
+            </div>
             <div class="nav-right">
+                <div class="streak-widget" id="streak-widget">
+                    <span class="streak-flame">🔥</span>
+                    <span class="streak-count" id="streak-count">0</span>
+                </div>
+                <span class="sync-status" id="sync-status" title="Sync status"></span>
                 <button class="nav-btn create-btn" id="create-language-btn">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                         <path d="M12 4v16m8-8H4" stroke="currentColor" stroke-width="2" fill="none"/>
                     </svg>
                     New Language
                 </button>
+                <!-- Auth buttons (shown when logged out) -->
+                <button class="nav-btn auth-btn" id="login-btn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+                    </svg>
+                    Login
+                </button>
+                <!-- User menu (shown when logged in) -->
+                <div class="user-menu hidden" id="user-menu">
+                    <button class="user-btn" id="user-btn">
+                        <span class="user-avatar" id="user-avatar">U</span>
+                        <span class="user-name" id="user-name">User</span>
+                    </button>
+                    <div class="user-dropdown hidden" id="user-dropdown">
+                        <button class="dropdown-item" id="logout-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -288,19 +337,22 @@
                         </button>
                     </div>
 
-                    <div class="mastery-buttons" id="mastery-buttons">
-                        <button class="mastery-btn still-learning" id="still-learning-btn" title="Still learning this card">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                            Still Learning
+                    <div class="sr-review-buttons" id="sr-review-buttons">
+                        <button class="sr-btn sr-again" id="sr-again-btn" title="Show again soon">
+                            <span class="sr-interval">&lt;1m</span>
+                            <span class="sr-label">Again</span>
                         </button>
-                        <button class="mastery-btn got-it" id="got-it-btn" title="I know this card">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 6L9 17l-5-5"/>
-                            </svg>
-                            Got It
+                        <button class="sr-btn sr-hard" id="sr-hard-btn" title="Hard - shorter interval">
+                            <span class="sr-interval" id="sr-hard-interval">1d</span>
+                            <span class="sr-label">Hard</span>
+                        </button>
+                        <button class="sr-btn sr-good" id="sr-good-btn" title="Good - normal interval">
+                            <span class="sr-interval" id="sr-good-interval">1d</span>
+                            <span class="sr-label">Good</span>
+                        </button>
+                        <button class="sr-btn sr-easy" id="sr-easy-btn" title="Easy - longer interval">
+                            <span class="sr-interval" id="sr-easy-interval">4d</span>
+                            <span class="sr-label">Easy</span>
                         </button>
                     </div>
 
@@ -593,6 +645,48 @@
         </div>
     </div>
 
+    <!-- Auth Modal (Login/Register) -->
+    <div class="modal" id="auth-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content auth-modal-content">
+            <div class="modal-header">
+                <h2 id="auth-modal-title">Login</h2>
+                <button class="modal-close" id="auth-modal-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="auth-form">
+                    <!-- Name field (register only) -->
+                    <div class="form-group hidden" id="auth-name-group">
+                        <label for="auth-name">NAME</label>
+                        <input type="text" id="auth-name" placeholder="Your name" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-email">EMAIL</label>
+                        <input type="email" id="auth-email" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password">PASSWORD</label>
+                        <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password" minlength="8">
+                    </div>
+                    <div class="auth-error hidden" id="auth-error"></div>
+                </form>
+            </div>
+            <div class="modal-footer auth-footer">
+                <button class="btn-primary btn-full" id="auth-submit">Login</button>
+                <p class="auth-switch">
+                    <span id="auth-switch-text">Don't have an account?</span>
+                    <button type="button" class="link-btn" id="auth-switch-btn">Sign up</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="sync.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -24,12 +24,295 @@ class FlashcardApp {
         this.speechSynthesis = window.speechSynthesis;
         this.isSpeaking = false;
         this.currentImageData = null;
+        this.authMode = 'login'; // 'login' or 'register'
         this.init();
     }
-    init() { this.loadData(); this.bindEvents(); this.showLibrary(); }
+    init() {
+        this.loadData();
+        this.migrateCardsSR();
+        this.loadStreakData();
+        this.bindEvents();
+        this.showLibrary();
+        this.initDateTime();
+        this.updateStreakUI();
+        this.loadVoices();
+        this.initAuth();
+        this.initTouchGestures();
+    }
+
+    initDateTime() {
+        this.updateDateTime();
+        setInterval(() => this.updateDateTime(), 1000);
+    }
+
+    updateDateTime() {
+        const now = new Date();
+        const timeEl = document.getElementById('datetime-time');
+        const dateEl = document.getElementById('datetime-date');
+        if (timeEl && dateEl) {
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            timeEl.textContent = `${hours}:${minutes}`;
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            dateEl.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+        }
+    }
     generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
     getFlagUrl(code) { return `https://flagcdn.com/48x36/${code}.png`; }
     isCountryCode(flag) { return /^[a-z]{2}$/.test(flag); }
+
+    // ========================================
+    // SPACED REPETITION (SM-2 Algorithm)
+    // ========================================
+
+    getDefaultSRData() {
+        return {
+            easeFactor: 2.5,      // Ease factor (min 1.3)
+            interval: 0,          // Days until next review
+            repetitions: 0,       // Successful reviews in a row
+            nextReview: null,     // ISO date string
+            lastReview: null      // ISO date string
+        };
+    }
+
+    // Quality: 0=Again, 1=Hard, 2=Good, 3=Easy
+    calculateSR(card, quality) {
+        const sr = card.sr || this.getDefaultSRData();
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        let { easeFactor, interval, repetitions } = sr;
+
+        if (quality === 0) {
+            // Again - reset progress
+            repetitions = 0;
+            interval = 0;
+        } else {
+            // Successful review - optimized shorter intervals
+            if (repetitions === 0) {
+                // First success: 10min, 1d, 2d based on quality
+                interval = quality === 1 ? 0 : quality === 2 ? 1 : 2;
+            } else if (repetitions === 1) {
+                // Second success: 1d, 2d, 4d
+                interval = quality === 1 ? 1 : quality === 2 ? 2 : 4;
+            } else if (repetitions === 2) {
+                // Third success: 3d, 5d, 7d
+                interval = quality === 1 ? 3 : quality === 2 ? 5 : 7;
+            } else {
+                // Later reviews: use ease factor with modest growth
+                interval = Math.round(interval * easeFactor);
+                if (quality === 1) interval = Math.max(1, Math.round(interval * 0.7));
+                if (quality === 3) interval = Math.round(interval * 1.2);
+            }
+            repetitions++;
+
+            // Adjust ease factor based on quality
+            const qualityAdjust = [0, -0.15, 0, 0.1];
+            easeFactor = Math.max(1.3, Math.min(2.5, easeFactor + qualityAdjust[quality]));
+        }
+
+        const nextReview = new Date(now);
+        nextReview.setDate(nextReview.getDate() + (quality === 0 ? 0 : interval));
+
+        return {
+            easeFactor: Math.round(easeFactor * 100) / 100,
+            interval,
+            repetitions,
+            nextReview: nextReview.toISOString().split('T')[0],
+            lastReview: now.toISOString().split('T')[0]
+        };
+    }
+
+    reviewCard(quality) {
+        if (this.studyCards.length === 0) return;
+        const card = this.studyCards[this.currentIndex];
+        const set = this.getCurrentSetObject();
+        if (!set) return;
+
+        const originalCard = set.cards.find(c => c.id === card.id);
+        if (!originalCard) return;
+
+        // Initialize SR data if missing
+        if (!originalCard.sr) originalCard.sr = this.getDefaultSRData();
+
+        // Calculate new SR values
+        originalCard.sr = this.calculateSR(originalCard, quality);
+        card.sr = { ...originalCard.sr };
+
+        // Update mastery based on SR progress
+        if (quality === 0) {
+            originalCard.mastery = "learning";
+        } else if (originalCard.sr.repetitions >= 3) {
+            originalCard.mastery = "mastered";
+        } else {
+            originalCard.mastery = "learning";
+        }
+        card.mastery = originalCard.mastery;
+
+        this.saveData();
+        this.updateMasteryButtons(card);
+        this.updateProgressTracking();
+        this.updateSRStats();
+
+        // Update streak on successful review
+        this.updateStreak();
+
+        // Auto-advance to next card after review
+        if (quality > 0) {
+            setTimeout(() => this.nextCard(), 300);
+        }
+    }
+
+    getDueCards(set) {
+        if (!set || !set.cards) return [];
+        const today = new Date().toISOString().split('T')[0];
+        return set.cards.filter(card => {
+            if (!card.sr || !card.sr.nextReview) return true; // New cards are due
+            return card.sr.nextReview <= today;
+        });
+    }
+
+    getNewCards(set) {
+        if (!set || !set.cards) return [];
+        return set.cards.filter(card => !card.sr || card.sr.repetitions === 0);
+    }
+
+    getReviewCards(set) {
+        if (!set || !set.cards) return [];
+        const today = new Date().toISOString().split('T')[0];
+        return set.cards.filter(card => {
+            if (!card.sr || card.sr.repetitions === 0) return false;
+            return card.sr.nextReview <= today;
+        });
+    }
+
+    updateSRStats() {
+        const set = this.getCurrentSetObject();
+        if (!set) return;
+
+        const dueCards = this.getDueCards(set);
+        const newCards = this.getNewCards(set);
+        const reviewCards = this.getReviewCards(set);
+
+        // Update due count display if exists
+        const dueCountEl = document.getElementById('due-cards-count');
+        if (dueCountEl) {
+            dueCountEl.textContent = dueCards.length;
+        }
+
+        const newCountEl = document.getElementById('new-cards-count');
+        if (newCountEl) {
+            newCountEl.textContent = newCards.length;
+        }
+
+        const reviewCountEl = document.getElementById('review-cards-count');
+        if (reviewCountEl) {
+            reviewCountEl.textContent = reviewCards.length;
+        }
+    }
+
+    migrateCardsSR() {
+        // Add SR data to existing cards that don't have it
+        let migrated = false;
+        Object.values(this.data.folders).forEach(folder => {
+            folder.sets.forEach(set => {
+                set.cards.forEach(card => {
+                    if (!card.sr) {
+                        card.sr = this.getDefaultSRData();
+                        migrated = true;
+                    }
+                });
+            });
+        });
+        if (migrated) this.saveData();
+    }
+
+    // ========================================
+    // STREAK SYSTEM
+    // ========================================
+
+    getDefaultStreakData() {
+        return {
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActivityDate: null,
+            totalActiveDays: 0
+        };
+    }
+
+    loadStreakData() {
+        const saved = localStorage.getItem("streakData");
+        if (saved) {
+            this.streakData = JSON.parse(saved);
+        } else {
+            this.streakData = this.getDefaultStreakData();
+        }
+    }
+
+    saveStreakData() {
+        localStorage.setItem("streakData", JSON.stringify(this.streakData));
+    }
+
+    getTodayDate() {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    getYesterdayDate() {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+    }
+
+    updateStreak() {
+        const today = this.getTodayDate();
+        const lastActivity = this.streakData.lastActivityDate;
+
+        // Already studied today
+        if (lastActivity === today) {
+            return;
+        }
+
+        // Check if streak continues or resets
+        if (lastActivity === this.getYesterdayDate()) {
+            // Studied yesterday - continue streak
+            this.streakData.currentStreak++;
+        } else {
+            // Streak broken - restart at 1
+            this.streakData.currentStreak = 1;
+        }
+
+        // Update longest streak if needed
+        if (this.streakData.currentStreak > this.streakData.longestStreak) {
+            this.streakData.longestStreak = this.streakData.currentStreak;
+        }
+
+        // Update tracking
+        this.streakData.lastActivityDate = today;
+        this.streakData.totalActiveDays++;
+
+        this.saveStreakData();
+        this.updateStreakUI();
+    }
+
+    updateStreakUI() {
+        const widget = document.getElementById('streak-widget');
+        const countEl = document.getElementById('streak-count');
+
+        if (!widget || !countEl) return;
+
+        countEl.textContent = this.streakData.currentStreak;
+
+        const today = this.getTodayDate();
+        const isActiveToday = this.streakData.lastActivityDate === today;
+
+        widget.classList.remove('active', 'inactive');
+        if (isActiveToday) {
+            widget.classList.add('active');
+        } else if (this.streakData.currentStreak > 0) {
+            widget.classList.add('inactive');
+        }
+    }
 
     getDefaultData() {
         return { folders: {
@@ -131,8 +414,11 @@ class FlashcardApp {
         document.getElementById("image-upload-area").addEventListener("dragover", (e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); });
         document.getElementById("image-upload-area").addEventListener("dragleave", (e) => { e.currentTarget.classList.remove("drag-over"); });
         document.getElementById("image-upload-area").addEventListener("drop", (e) => this.handleImageDrop(e));
-        document.getElementById("still-learning-btn").addEventListener("click", () => this.markCard("learning"));
-        document.getElementById("got-it-btn").addEventListener("click", () => this.markCard("mastered"));
+        // Spaced Repetition review buttons
+        document.getElementById("sr-again-btn").addEventListener("click", () => this.reviewCard(0));
+        document.getElementById("sr-hard-btn").addEventListener("click", () => this.reviewCard(1));
+        document.getElementById("sr-good-btn").addEventListener("click", () => this.reviewCard(2));
+        document.getElementById("sr-easy-btn").addEventListener("click", () => this.reviewCard(3));
         document.getElementById("reset-progress-btn").addEventListener("click", () => this.resetProgress());
         document.getElementById("import-btn").addEventListener("click", () => this.showImportModal());
         document.getElementById("import-close").addEventListener("click", () => this.hideImportModal());
@@ -164,6 +450,15 @@ class FlashcardApp {
         document.getElementById("language-modal-save").addEventListener("click", () => this.saveLanguage());
         document.querySelector("#language-modal .modal-overlay").addEventListener("click", () => this.hideLanguageModal());
         document.addEventListener("keydown", (e) => this.handleKeyboard(e));
+        // Auth events
+        document.getElementById("login-btn")?.addEventListener("click", () => this.showAuthModal('login'));
+        document.getElementById("auth-modal-close")?.addEventListener("click", () => this.hideAuthModal());
+        document.querySelector("#auth-modal .modal-overlay")?.addEventListener("click", () => this.hideAuthModal());
+        document.getElementById("auth-switch-btn")?.addEventListener("click", () => this.toggleAuthMode());
+        document.getElementById("auth-form")?.addEventListener("submit", (e) => { e.preventDefault(); this.handleAuth(); });
+        document.getElementById("auth-submit")?.addEventListener("click", () => this.handleAuth());
+        document.getElementById("user-btn")?.addEventListener("click", () => this.toggleUserDropdown());
+        document.getElementById("logout-btn")?.addEventListener("click", () => this.handleLogout());
     }
 
     showLibrary() {
@@ -681,38 +976,56 @@ class FlashcardApp {
         document.getElementById("total-cards").textContent = this.studyCards.length;
         const progress = ((this.currentIndex + 1) / this.studyCards.length) * 100;
         document.getElementById("progress-fill").style.width = progress + "%";
-        this.updateMasteryButtons(card);
+        this.updateSRIntervals(card);
     }
 
-    updateMasteryButtons(card) {
-        const stillLearningBtn = document.getElementById("still-learning-btn");
-        const gotItBtn = document.getElementById("got-it-btn");
-        stillLearningBtn.classList.remove("active");
-        gotItBtn.classList.remove("active");
-        if (card && card.mastery === "learning") {
-            stillLearningBtn.classList.add("active");
-        } else if (card && card.mastery === "mastered") {
-            gotItBtn.classList.add("active");
-        }
+    formatInterval(days) {
+        if (days === 0) return "<10m";
+        if (days === 1) return "1d";
+        if (days < 7) return days + "d";
+        if (days < 30) return Math.round(days / 7) + "w";
+        if (days < 365) return Math.round(days / 30) + "mo";
+        return Math.round(days / 365) + "y";
     }
 
-    markCard(status) {
-        if (this.studyCards.length === 0) return;
-        const card = this.studyCards[this.currentIndex];
-        const set = this.getCurrentSetObject();
-        if (!set) return;
-        const originalCard = set.cards.find(c => c.id === card.id);
-        if (originalCard) {
-            originalCard.mastery = status;
-            card.mastery = status;
-            this.saveData();
-            this.updateMasteryButtons(card);
-            this.updateProgressTracking();
-            if (this.currentIndex < this.studyCards.length - 1) {
-                setTimeout(() => this.nextCard(), 300);
-            }
+    updateSRIntervals(card) {
+        if (!card) return;
+
+        // Calculate what intervals would be for each choice
+        const sr = card.sr || this.getDefaultSRData();
+
+        // Again: always shows <1m (review again this session)
+        // Hard, Good, Easy: calculate based on current state
+        let hardInterval, goodInterval, easyInterval;
+
+        if (sr.repetitions === 0) {
+            // First review: 10min, 1d, 2d
+            hardInterval = 0;
+            goodInterval = 1;
+            easyInterval = 2;
+        } else if (sr.repetitions === 1) {
+            // Second review: 1d, 2d, 4d
+            hardInterval = 1;
+            goodInterval = 2;
+            easyInterval = 4;
+        } else if (sr.repetitions === 2) {
+            // Third review: 3d, 5d, 7d
+            hardInterval = 3;
+            goodInterval = 5;
+            easyInterval = 7;
+        } else {
+            // Later reviews: use ease factor
+            const baseInterval = Math.round(sr.interval * sr.easeFactor);
+            hardInterval = Math.max(1, Math.round(baseInterval * 0.7));
+            goodInterval = baseInterval;
+            easyInterval = Math.round(baseInterval * 1.2);
         }
+
+        document.getElementById("sr-hard-interval").textContent = this.formatInterval(hardInterval);
+        document.getElementById("sr-good-interval").textContent = this.formatInterval(goodInterval);
+        document.getElementById("sr-easy-interval").textContent = this.formatInterval(easyInterval);
     }
+
 
     updateProgressTracking() {
         const set = this.getCurrentSetObject();
@@ -762,17 +1075,145 @@ class FlashcardApp {
         return langMap[folderId] || "en-US";
     }
 
+    // ========================================
+    // ENGLISH PRONUNCIATION (UK/US)
+    // ========================================
+
+    // Audio player for dictionary pronunciations
+    playDictionaryAudio(url) {
+        return new Promise((resolve, reject) => {
+            const audio = new Audio(url);
+            audio.onended = () => { this.isSpeaking = false; this.updateTTSButtons(false); resolve(); };
+            audio.onerror = () => { this.isSpeaking = false; this.updateTTSButtons(false); reject(); };
+            audio.onplay = () => { this.isSpeaking = true; this.updateTTSButtons(true); };
+            audio.play().catch(reject);
+        });
+    }
+
+    // Fetch pronunciation from Cambridge Dictionary
+    async fetchCambridgeAudio(word, accent = 'uk') {
+        const cleanWord = word.toLowerCase().trim().replace(/[^a-z\s-]/g, '').replace(/\s+/g, '-');
+        // Cambridge audio URL pattern
+        const region = accent === 'uk' ? 'uk' : 'us';
+        const audioUrl = `https://dictionary.cambridge.org/media/english/${region}_pron/${cleanWord.charAt(0)}/${cleanWord.substring(0,3)}/${cleanWord}.mp3`;
+        return audioUrl;
+    }
+
+    // Fetch pronunciation from Oxford Dictionary
+    async fetchOxfordAudio(word, accent = 'uk') {
+        const cleanWord = word.toLowerCase().trim().replace(/[^a-z\s-]/g, '').replace(/\s+/g, '_');
+        // Oxford audio URL pattern
+        const region = accent === 'uk' ? 'uk_pron' : 'us_pron';
+        const audioUrl = `https://www.oxfordlearnersdictionaries.com/media/english/${region}/${cleanWord.substring(0,1)}/${cleanWord.substring(0,3)}/${cleanWord}__gb_1.mp3`;
+        return audioUrl;
+    }
+
+    // Try to play English pronunciation with fallback
+    async speakEnglish(text, accent = 'us') {
+        if (this.isSpeaking) {
+            this.speechSynthesis.cancel();
+            if (this.currentAudio) {
+                this.currentAudio.pause();
+                this.currentAudio = null;
+            }
+        }
+        if (!text || text === "Click to start" || text === "No cards available") return;
+
+        const word = text.split(/\s+/)[0]; // Get first word for dictionary lookup
+
+        // Try Cambridge first, then Oxford, then fallback to Web Speech API
+        const sources = [
+            () => this.fetchCambridgeAudio(word, accent),
+            () => this.fetchOxfordAudio(word, accent)
+        ];
+
+        for (const getUrl of sources) {
+            try {
+                const url = await getUrl();
+                await this.playDictionaryAudio(url);
+                return; // Success!
+            } catch (e) {
+                // Try next source
+            }
+        }
+
+        // Fallback to Web Speech API
+        const lang = accent === 'uk' ? 'en-GB' : 'en-US';
+        this.speak(text, lang);
+    }
+
+    // Speak English directly with UK accent (no picker needed)
+    speakEnglishUK(text) {
+        this.speakEnglish(text, 'uk');
+    }
+
+    // Get the best available voice for a language
+    getBestVoice(lang) {
+        const voices = this.speechSynthesis.getVoices();
+        if (!voices.length) return null;
+
+        // Preferred voice names (natural/premium voices)
+        const preferredVoices = {
+            'en-GB': [
+                'Google UK English Female',
+                'Google UK English Male',
+                'Microsoft Hazel',
+                'Daniel',             // macOS UK
+                'Kate',               // macOS UK
+                'Serena',             // macOS UK
+            ]
+        };
+
+        const preferred = preferredVoices[lang] || [];
+
+        // Try to find a preferred voice
+        for (const name of preferred) {
+            const voice = voices.find(v => v.name.includes(name));
+            if (voice) return voice;
+        }
+
+        // Fallback: find any voice matching the language
+        const langMatch = voices.find(v => v.lang === lang);
+        if (langMatch) return langMatch;
+
+        // Fallback: find voice starting with language code
+        const langPrefix = lang.split('-')[0];
+        return voices.find(v => v.lang.startsWith(langPrefix)) || null;
+    }
+
     speak(text, lang) {
         if (this.isSpeaking) { this.speechSynthesis.cancel(); }
         if (!text || text === "Click to start" || text === "No cards available") return;
+
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang;
+
+        // Try to get a better voice
+        const voice = this.getBestVoice(lang);
+        if (voice) {
+            utterance.voice = voice;
+        }
+
         utterance.rate = 0.9;
         utterance.pitch = 1;
         utterance.onstart = () => { this.isSpeaking = true; this.updateTTSButtons(true); };
         utterance.onend = () => { this.isSpeaking = false; this.updateTTSButtons(false); };
         utterance.onerror = () => { this.isSpeaking = false; this.updateTTSButtons(false); };
         this.speechSynthesis.speak(utterance);
+    }
+
+    // Preload voices (they may not be available immediately)
+    loadVoices() {
+        return new Promise(resolve => {
+            const voices = this.speechSynthesis.getVoices();
+            if (voices.length) {
+                resolve(voices);
+            } else {
+                this.speechSynthesis.onvoiceschanged = () => {
+                    resolve(this.speechSynthesis.getVoices());
+                };
+            }
+        });
     }
 
     updateTTSButtons(speaking) {
@@ -785,21 +1226,46 @@ class FlashcardApp {
         if (this.studyCards.length === 0) return;
         const card = this.studyCards[this.currentIndex];
         const text = this.showTermFirst ? card.front : card.back;
-        const lang = this.showTermFirst ? this.getLanguageCode(this.currentFolder) : "en-US";
-        this.speak(text, lang);
+
+        // Check if English - use UK accent directly
+        const isEnglishTerm = this.showTermFirst && this.currentFolder === 'english';
+        const isEnglishDef = !this.showTermFirst;
+
+        if (isEnglishTerm || isEnglishDef) {
+            this.speakEnglishUK(text);
+        } else {
+            const lang = this.getLanguageCode(this.currentFolder);
+            this.speak(text, lang);
+        }
     }
 
     speakBack() {
         if (this.studyCards.length === 0) return;
         const card = this.studyCards[this.currentIndex];
         const text = this.showTermFirst ? card.back : card.front;
-        const lang = this.showTermFirst ? "en-US" : this.getLanguageCode(this.currentFolder);
-        this.speak(text, lang);
+
+        // Check if English - use UK accent directly
+        const isEnglishDef = this.showTermFirst; // Back is definition (English)
+        const isEnglishTerm = !this.showTermFirst && this.currentFolder === 'english';
+
+        if (isEnglishDef || isEnglishTerm) {
+            this.speakEnglishUK(text);
+        } else {
+            const lang = this.getLanguageCode(this.currentFolder);
+            this.speak(text, lang);
+        }
     }
 
     speakText(text, isDefinition = false) {
-        const lang = isDefinition ? "en-US" : this.getLanguageCode(this.currentFolder);
-        this.speak(text, lang);
+        // For term list items
+        const isEnglish = isDefinition || this.currentFolder === 'english';
+
+        if (isEnglish) {
+            this.speakEnglishUK(text);
+        } else {
+            const lang = this.getLanguageCode(this.currentFolder);
+            this.speak(text, lang);
+        }
     }
 
     startLearnMode() { this.learnIndex = 0; this.learnCorrect = 0; this.studyCards = this.shuffleArray([...this.currentCards]); this.showLearnQuestion(); }
@@ -1027,6 +1493,216 @@ class FlashcardApp {
                 case "ArrowRight": this.nextCard(); break;
             }
         }
+    }
+
+    // ========================================
+    // TOUCH/SWIPE GESTURES
+    // ========================================
+
+    initTouchGestures() {
+        const flashcard = document.getElementById('flashcard');
+        if (!flashcard) return;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        const minSwipeDistance = 50;
+
+        flashcard.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        flashcard.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            this.handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY, minSwipeDistance);
+        }, { passive: true });
+    }
+
+    handleSwipe(startX, startY, endX, endY, minDistance) {
+        const diffX = endX - startX;
+        const diffY = endY - startY;
+
+        // Check if horizontal swipe is dominant
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minDistance) {
+            if (!document.getElementById("set-view").classList.contains("hidden") && this.currentMode === "flashcards") {
+                if (diffX > 0) {
+                    // Swipe right -> previous card
+                    this.previousCard();
+                } else {
+                    // Swipe left -> next card
+                    this.nextCard();
+                }
+            }
+        } else if (Math.abs(diffY) > minDistance && Math.abs(diffY) > Math.abs(diffX)) {
+            // Vertical swipe -> flip card
+            if (!document.getElementById("set-view").classList.contains("hidden") && this.currentMode === "flashcards") {
+                this.flipCard();
+            }
+        }
+    }
+
+    // ========================================
+    // AUTH & SYNC
+    // ========================================
+
+    initAuth() {
+        // Initialize API and Sync Manager
+        if (typeof api !== 'undefined') {
+            this.api = api;
+            this.sync = new SyncManager(this, api);
+
+            // Set auth change callback
+            this.api.onAuthChange = (user) => this.updateAuthUI(user);
+
+            // Check if already logged in
+            const user = this.api.getUser();
+            if (user) {
+                this.updateAuthUI(user);
+                // Perform initial sync if online
+                if (navigator.onLine) {
+                    this.sync.checkAndSync();
+                }
+            }
+        }
+    }
+
+    updateAuthUI(user) {
+        const loginBtn = document.getElementById('login-btn');
+        const userMenu = document.getElementById('user-menu');
+        const userName = document.getElementById('user-name');
+        const userAvatar = document.getElementById('user-avatar');
+
+        if (user) {
+            // Logged in
+            loginBtn?.classList.add('hidden');
+            userMenu?.classList.remove('hidden');
+            if (userName) userName.textContent = user.name || 'User';
+            if (userAvatar) userAvatar.textContent = (user.name || 'U').charAt(0).toUpperCase();
+        } else {
+            // Logged out
+            loginBtn?.classList.remove('hidden');
+            userMenu?.classList.add('hidden');
+        }
+    }
+
+    showAuthModal(mode = 'login') {
+        this.authMode = mode;
+        const modal = document.getElementById('auth-modal');
+        const title = document.getElementById('auth-modal-title');
+        const nameGroup = document.getElementById('auth-name-group');
+        const submitBtn = document.getElementById('auth-submit');
+        const switchText = document.getElementById('auth-switch-text');
+        const switchBtn = document.getElementById('auth-switch-btn');
+        const errorEl = document.getElementById('auth-error');
+
+        // Reset form
+        document.getElementById('auth-form')?.reset();
+        errorEl?.classList.add('hidden');
+
+        if (mode === 'login') {
+            title.textContent = 'Login';
+            nameGroup?.classList.add('hidden');
+            submitBtn.textContent = 'Login';
+            switchText.textContent = "Don't have an account?";
+            switchBtn.textContent = 'Sign up';
+        } else {
+            title.textContent = 'Create Account';
+            nameGroup?.classList.remove('hidden');
+            submitBtn.textContent = 'Create Account';
+            switchText.textContent = 'Already have an account?';
+            switchBtn.textContent = 'Login';
+        }
+
+        modal?.classList.add('active');
+    }
+
+    hideAuthModal() {
+        document.getElementById('auth-modal')?.classList.remove('active');
+    }
+
+    toggleAuthMode() {
+        this.showAuthModal(this.authMode === 'login' ? 'register' : 'login');
+    }
+
+    async handleAuth() {
+        const email = document.getElementById('auth-email')?.value;
+        const password = document.getElementById('auth-password')?.value;
+        const name = document.getElementById('auth-name')?.value;
+        const errorEl = document.getElementById('auth-error');
+        const submitBtn = document.getElementById('auth-submit');
+
+        if (!email || !password) {
+            this.showAuthError('Please fill in all fields');
+            return;
+        }
+
+        if (this.authMode === 'register' && !name) {
+            this.showAuthError('Please enter your name');
+            return;
+        }
+
+        // Disable button
+        submitBtn.disabled = true;
+        submitBtn.textContent = this.authMode === 'login' ? 'Logging in...' : 'Creating account...';
+
+        try {
+            let result;
+            if (this.authMode === 'login') {
+                result = await this.api.login(email, password);
+            } else {
+                result = await this.api.register(email, password, name);
+            }
+
+            if (result.success) {
+                this.hideAuthModal();
+                // Update UI
+                this.updateAuthUI(result.data.user);
+                // Perform initial sync
+                if (this.sync) {
+                    await this.sync.initialSync();
+                }
+            } else {
+                this.showAuthError(result.message || 'Authentication failed');
+            }
+        } catch (error) {
+            this.showAuthError(error.message || 'An error occurred');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = this.authMode === 'login' ? 'Login' : 'Create Account';
+        }
+    }
+
+    showAuthError(message) {
+        const errorEl = document.getElementById('auth-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+
+    toggleUserDropdown() {
+        const dropdown = document.getElementById('user-dropdown');
+        dropdown?.classList.toggle('hidden');
+
+        // Close on outside click
+        const closeDropdown = (e) => {
+            if (!e.target.closest('.user-menu')) {
+                dropdown?.classList.add('hidden');
+                document.removeEventListener('click', closeDropdown);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeDropdown), 0);
+    }
+
+    async handleLogout() {
+        if (this.api) {
+            await this.api.logout();
+        }
+        this.updateAuthUI(null);
+        document.getElementById('user-dropdown')?.classList.add('hidden');
     }
 }
 
