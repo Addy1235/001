@@ -645,6 +645,34 @@
         </div>
     </div>
 
+    <!-- Delete Language Modal -->
+    <div class="modal" id="delete-language-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content delete-modal-content">
+            <div class="modal-header">
+                <h2>Delete Language</h2>
+                <button class="modal-close" id="delete-language-modal-close">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-warning">Are you sure you want to delete <strong id="delete-language-name"></strong>?</p>
+                <p class="delete-info">This will permanently delete all sets and cards in this folder.</p>
+                <div class="form-group">
+                    <label for="delete-password">ENTER PASSWORD TO CONFIRM</label>
+                    <input type="password" id="delete-password" placeholder="Enter your password">
+                    <p class="delete-error" id="delete-error"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="delete-language-modal-cancel">Cancel</button>
+                <button class="btn-danger" id="delete-language-modal-confirm">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Auth Modal (Login/Register) -->
     <div class="modal" id="auth-modal">
         <div class="modal-overlay"></div>

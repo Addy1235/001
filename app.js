@@ -453,6 +453,11 @@ class FlashcardApp {
         document.getElementById("language-modal-cancel").addEventListener("click", () => this.hideLanguageModal());
         document.getElementById("language-modal-save").addEventListener("click", () => this.saveLanguage());
         document.querySelector("#language-modal .modal-overlay").addEventListener("click", () => this.hideLanguageModal());
+        // Delete language modal events
+        document.getElementById("delete-language-modal-close")?.addEventListener("click", () => this.hideDeleteLanguageModal());
+        document.getElementById("delete-language-modal-cancel")?.addEventListener("click", () => this.hideDeleteLanguageModal());
+        document.getElementById("delete-language-modal-confirm")?.addEventListener("click", () => this.confirmDeleteLanguage());
+        document.querySelector("#delete-language-modal .modal-overlay")?.addEventListener("click", () => this.hideDeleteLanguageModal());
         document.addEventListener("keydown", (e) => this.handleKeyboard(e));
         // Auth events
         document.getElementById("login-btn")?.addEventListener("click", () => this.showAuthModal('login'));
@@ -483,9 +488,15 @@ class FlashcardApp {
             if (!folder) return;
             const folderCard = document.createElement("div");
             folderCard.className = "folder-card";
+            folderCard.style.position = "relative";
             folderCard.dataset.folder = folderId;
             const flagContent = this.isCountryCode(folder.flag) ? `<img src="${this.getFlagUrl(folder.flag)}" alt="${folder.name}" class="folder-flag-img">` : `<span>${folder.flag}</span>`;
             folderCard.innerHTML = `
+                <button class="folder-delete-btn" data-folder="${folderId}" title="Delete ${folder.name}">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
                 <div class="folder-icon">${flagContent}</div>
                 <div class="folder-info">
                     <h3>${folder.name}</h3>
@@ -495,6 +506,11 @@ class FlashcardApp {
                     <polyline points="9 18 15 12 9 6"/>
                 </svg>
             `;
+            // Delete button click
+            folderCard.querySelector(".folder-delete-btn").addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.showDeleteLanguageModal(folderId);
+            });
             folderCard.addEventListener("click", () => this.showFolder(folderId));
             foldersGrid.appendChild(folderCard);
         });
@@ -611,6 +627,65 @@ class FlashcardApp {
     hideLanguageModal() {
         document.getElementById("language-modal").classList.remove("active");
         this.selectedCountry = null;
+    }
+
+    showDeleteLanguageModal(folderId) {
+        this.deletingFolderId = folderId;
+        const folder = this.data.folders[folderId];
+        if (!folder) return;
+        document.getElementById("delete-language-name").textContent = folder.name;
+        document.getElementById("delete-password").value = "";
+        document.getElementById("delete-error").textContent = "";
+        document.getElementById("delete-language-modal").classList.add("active");
+    }
+
+    hideDeleteLanguageModal() {
+        document.getElementById("delete-language-modal").classList.remove("active");
+        this.deletingFolderId = null;
+    }
+
+    async confirmDeleteLanguage() {
+        const password = document.getElementById("delete-password").value;
+        const errorEl = document.getElementById("delete-error");
+
+        if (!password) {
+            errorEl.textContent = "Please enter your password";
+            return;
+        }
+
+        // Check if user is logged in
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+
+        if (user && typeof api !== 'undefined') {
+            // Verify password via API
+            try {
+                const response = await api.login(user.email, password);
+                if (!response.success) {
+                    errorEl.textContent = "Incorrect password";
+                    return;
+                }
+            } catch (err) {
+                errorEl.textContent = "Incorrect password";
+                return;
+            }
+        } else {
+            // Not logged in - use simple confirmation password "delete"
+            if (password !== "delete") {
+                errorEl.textContent = 'Type "delete" to confirm';
+                return;
+            }
+        }
+
+        // Delete the folder
+        if (this.deletingFolderId && this.data.folders[this.deletingFolderId]) {
+            delete this.data.folders[this.deletingFolderId];
+            this.folderOrder = this.folderOrder.filter(id => id !== this.deletingFolderId);
+            this.saveData();
+            this.saveFolderOrder();
+            this.hideDeleteLanguageModal();
+            this.renderFolders();
+            this.updateLibraryCounts();
+        }
     }
 
     renderLanguageGrid() {
