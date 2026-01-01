@@ -378,7 +378,11 @@ class FlashcardApp {
         if (savedData) { this.data = JSON.parse(savedData); this.migrateFlags(); }
         else { this.data = this.getDefaultData(); this.saveData(); }
         const savedOrder = localStorage.getItem("folderOrder");
-        if (savedOrder) { this.folderOrder = JSON.parse(savedOrder); }
+        if (savedOrder) {
+            // Deduplicate and filter only existing folders
+            const parsed = JSON.parse(savedOrder);
+            this.folderOrder = [...new Set(parsed)].filter(id => this.data.folders[id]);
+        }
         else { this.folderOrder = Object.keys(this.data.folders); }
     }
 
