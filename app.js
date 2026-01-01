@@ -639,8 +639,19 @@ class FlashcardApp {
 
     saveLanguage() {
         if (!this.selectedCountry) { alert("Please select a language."); return; }
+        if (this.savingLanguage) return; // Prevent double-click
+        this.savingLanguage = true;
         const folderId = this.selectedCountry.name.toLowerCase().replace(/\s+/g, "-");
-        if (this.data.folders[folderId]) { alert("This language already exists."); return; }
+        if (this.data.folders[folderId]) {
+            alert("This language already exists.");
+            this.savingLanguage = false;
+            return;
+        }
+        // Check folderOrder doesn't already have it
+        if (this.folderOrder.includes(folderId)) {
+            this.savingLanguage = false;
+            return;
+        }
         this.data.folders[folderId] = { name: this.selectedCountry.name, flag: this.selectedCountry.code, sets: [] };
         this.folderOrder.push(folderId);
         this.saveData();
@@ -648,6 +659,7 @@ class FlashcardApp {
         this.hideLanguageModal();
         this.renderFolders();
         this.updateLibraryCounts();
+        this.savingLanguage = false;
     }
 
     showFolder(folderId) {
