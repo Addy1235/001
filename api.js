@@ -265,7 +265,7 @@ const API_URL = (() => {
 
     // Production: Use your deployed backend URL
     // Replace this with your actual Render backend URL after deployment
-    return 'https://flashcard-api.onrender.com/api/v1';
+    return 'https://zero01-d6f2.onrender.com/api/v1';
 })();
 
 // Export singleton instance
